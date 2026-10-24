@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ratenzahlungsplan</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--text:#1c2430;--muted:#667085;--line:#e4e7ec;--accent:#1f6feb;--accent-t:#fff;--warn:#b42318;--hl:#e8f1ff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f141b;--card:#18202a;--text:#e8edf3;--muted:#98a2b3;--line:#2a3441;--accent:#4c8dff;--accent-t:#0b1220;--warn:#ff8a80;--hl:#1b2a42}}
+:root[data-theme="dark"]{--bg:#0f141b;--card:#18202a;--text:#e8edf3;--muted:#98a2b3;--line:#2a3441;--accent:#4c8dff;--accent-t:#0b1220;--warn:#ff8a80;--hl:#1b2a42}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+input{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+input:focus{outline:2px solid var(--accent);border-color:transparent}
+button{margin-top:14px;width:100%;font:inherit;font-weight:600;background:var(--accent);color:var(--accent-t);border:0;border-radius:10px;padding:12px;cursor:pointer}
+.err{color:var(--warn);margin-top:10px;font-size:.95rem}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:var(--hl);border-radius:10px;padding:10px 12px}
+.stat span{display:block;font-size:.78rem;color:var(--muted)}
+.stat b{font-size:1.05rem}
+.wrap{overflow-x:auto;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.92rem}
+th,td{padding:8px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:.8rem;position:sticky;top:0;background:var(--card)}
+tr.sof td{font-weight:600}
+tr.last td{background:var(--hl);font-weight:700}
+.note{color:var(--muted);font-size:.85rem;margin-top:10px}
+.hide{display:none}
+.row{display:flex;gap:8px;margin-top:14px}
+.row button{margin-top:0;flex:1}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btns{display:flex;gap:8px}
+.full{grid-column:1/-1}
+h2{font-size:1rem;margin:0 0 10px}
+.sep{border:0;border-top:1px solid var(--line);margin:16px 0}
+.sec{display:flex;justify-content:space-between;align-items:center}
+.sec button{width:auto;margin:0;padding:8px 12px;font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Ratenzahlungsplan</h1>
+<p class="sub">Berechnet Laufzeit und Ratenplan inklusive geringerer Schlussrate.</p>
+
+<div class="card">
+  <h2>Schuldner</h2>
+  <div class="grid">
+    <div class="full"><label for="name">Name des Schuldners</label><input id="name" type="text" autocomplete="off" placeholder="Vor- und Nachname"></div>
+    <div class="full"><label for="street">Straße und Hausnummer</label><input id="street" type="text" autocomplete="off"></div>
+    <div class="full"><label for="city">PLZ und Ort</label><input id="city" type="text" autocomplete="off"></div>
+  </div>
+  <hr class="sep">
+  <h2>Schuld und Rate</h2>
+  <div class="grid">
+    <div><label for="amount">Höhe der Schulden (€)</label><input id="amount" type="number" inputmode="decimal" min="0" step="0.01" value="5000"></div>
+    <div><label for="rate">Monatliche Rate (€)</label><input id="rate" type="number" inputmode="decimal" min="0" step="0.01" value="300"></div>
+    <div><label for="start">Beginn (erste Rate im Monat)</label><input id="start" type="month"></div>
+    <div><label for="dfrom">Schulden entstanden von (Monat)</label><input id="dfrom" type="month"></div>
+    <div><label for="dto">Schulden entstanden bis (Monat)</label><input id="dto" type="month"></div>
+    <div><label for="sofort">Einmalzahlung (€) – optional</label><input id="sofort" type="number" inputmode="decimal" min="0" step="0.01"></div>
+    <div><label for="sdate">Datum der Einmalzahlung</label><input id="sdate" type="date"></div>
+  </div>
+  <div class="row"><button id="go">Plan erstellen</button><button id="reset" class="ghost" type="button">Zurücksetzen</button></div>
+  <div id="err" class="err"></div>
+</div>
+
+<div id="result" class="hide">
+  <div class="card">
+    <div class="stats" id="stats"></div>
+    <p class="note" id="note"></p>
+  </div>
+  <div class="card">
+    <div class="sec"><b>Ratenlaufplan</b><div class="btns"><button id="pdf">Als PDF speichern</button><button id="csv">CSV</button></div></div>
+    <div class="wrap"><table>
+      <thead><tr><th>Nr. / Monat</th><th>Rate</th><th>Restschuld</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <div class="note" id="msg"></div>
+  </div>
+</div>
+<p class="note">Datenschutz: Alle Eingaben werden ausschließlich lokal in deinem Browser verarbeitet. Es werden keine Daten an einen Server übertragen, gespeichert oder an Dritte weitergegeben. Die Seite verwendet keine Cookies, kein Tracking und keine externen Dienste, Schriften oder Bibliotheken. Das PDF wird direkt auf deinem Gerät erzeugt.</p>
+</main>
+
+<script>
+const eur = new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'});
+const $ = id => document.getElementById(id);
+let plan = [];
+let sofortSkipped = false;
+
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function fmtDate(iso){ const [y,m,d] = iso.split('-'); return d + '.' + m + '.' + y; }
+
+(function init(){
+  const d = new Date();
+  $('start').value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  $('sdate').value = todayISO();
+})();
+
+function monthLabel(y, m){
+  return new Date(y, m, 1).toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+}
+
+function schuldZeitraum(){
+  const a = $('dfrom').value, b = $('dto').value;
+  const lbl = v => { const [y, m] = v.split('-').map(Number); return monthLabel(y, m - 1); };
+  if (a && b) return a === b ? lbl(a) : lbl(a) + ' bis ' + lbl(b);
+  if (a) return 'ab ' + lbl(a);
+  if (b) return 'bis ' + lbl(b);
+  return '';
+}
+
+function calc(){
+  const err = $('err'); err.textContent = '';
+  const debt = Math.round(parseFloat($('amount').value) * 100);
+  const rate = Math.round(parseFloat($('rate').value) * 100);
+  const sv = $('start').value;
+  if (!(debt > 0)) return fail('Bitte eine Schuldenhöhe größer 0 eingeben.');
+  if (!(rate > 0)) return fail('Bitte eine monatliche Rate größer 0 eingeben.');
+  if (!sv) return fail('Bitte einen Beginn wählen.');
+  if ($('dfrom').value && $('dto').value && $('dfrom').value > $('dto').value) return fail('Der Schuldzeitraum ist ungültig: „von“ liegt nach „bis“.');
+  const [sy, sm] = sv.split('-').map(Number);
+
+  const sofortRaw = $('sofort').value.trim();
+  const sAmt = sofortRaw === '' ? 0 : Math.round(parseFloat(sofortRaw) * 100);
+  const sDate = $('sdate').value;
+  if (isNaN(sAmt) || sAmt < 0) return fail('Bitte eine gültige Einmalzahlung eingeben (0 oder höher).');
+  if (sAmt > 0 && !sDate) return fail('Bitte ein Datum für die Einmalzahlung wählen.');
+
+  plan = [];
+  sofortSkipped = false;
+  let rest = debt, k = 0, sofortDone = !(sAmt > 0);
+  let sIdx = 0;
+  if (!sofortDone) {
+    const [y2, m2] = sDate.split('-').map(Number);
+    sIdx = (y2 - sy) * 12 + (m2 - sm);   // Monatsabstand zum Ratenbeginn
+  }
+  while (rest > 0) {
+    if (plan.length > 1300) return fail('Die Laufzeit übersteigt 100 Jahre. Bitte eine höhere Rate wählen.');
+    if (!sofortDone && sIdx <= k) {
+      // Einmalzahlung liegt vor (oder im selben Monat wie) der nächsten Rate
+      const pay = Math.min(sAmt, rest);
+      rest -= pay;
+      sofortDone = true;
+      plan.push({nr:0, sofort:true, label:'Einmalzahlung am ' + fmtDate(sDate), pay, rest});
+    } else {
+      const pay = Math.min(rate, rest);
+      rest -= pay;
+      plan.push({nr:++k, label:monthLabel(sy, sm - 1 + k - 1), pay, rest});
+    }
+  }
+  if (!sofortDone) sofortSkipped = true;   // Schuld war bereits vor dem Zahlungsdatum beglichen
+  render(debt, rate);
+}
+
+function fail(msg){
+  $('err').textContent = msg;
+  $('result').classList.add('hide');
+  return false;
+}
+
+function render(debt, rate){
+  const sof = plan.find(p => p.sofort);
+  const raten = plan.filter(p => !p.sofort);
+  const n = raten.length, last = raten[n-1], lastRow = plan.length - 1;
+  const total = plan.reduce((s,p)=>s+p.pay,0);
+  const full = n > 0 && last.pay === rate;
+  const zr = schuldZeitraum();
+  const stats = [
+    ['Schulden', eur.format(debt/100)],
+    ...(zr ? [['Schuldzeitraum', zr]] : []),
+    ...(sof ? [['Einmalzahlung', eur.format(sof.pay/100) + ' am ' + sof.label.replace('Einmalzahlung am ','')]] : []),
+    ['Anzahl Raten', n],
+    ['Ratenzeitraum', n ? raten[0].label + ' – ' + last.label : '–'],
+    ['Monatliche Rate', eur.format(rate/100)],
+    ['Schlussrate', n ? eur.format(last.pay/100) : '–'],
+    ['Gesamtzahlung', eur.format(total/100)]
+  ];
+  $('stats').innerHTML = stats.map(s => '<div class="stat"><span>'+s[0]+'</span><b>'+s[1]+'</b></div>').join('');
+  const sofortLast = plan[lastRow].sofort;
+  const sofDate = sof ? sof.label.replace('Einmalzahlung am ','') : '';
+  const vor = sof ? 'Die Einmalzahlung von ' + eur.format(sof.pay/100) + ' am ' + sofDate + ' ist im Plan an der passenden Stelle berücksichtigt. ' : '';
+  let text = n === 0
+    ? 'Die Schuld wird vollständig durch die Einmalzahlung beglichen.'
+    : sofortLast
+      ? vor + n + ' Raten zu ' + eur.format(rate/100) + '; die Restschuld wird durch die Einmalzahlung beglichen.'
+      : vor + (n === 1
+        ? 'Die Restschuld wird mit einer einzigen Rate beglichen.'
+        : full
+          ? 'Die Schuld geht genau mit voller Rate auf – es gibt keine geringere Schlussrate.'
+          : (n-1) + ' Raten zu ' + eur.format(rate/100) + ', danach eine Schlussrate von ' + eur.format(last.pay/100) + '.');
+  if (sofortSkipped) text += ' Die Einmalzahlung entfällt, weil die Schuld vor dem gewählten Datum bereits beglichen ist.';
+  $('note').textContent = text;
+  $('rows').innerHTML = plan.map((p,i) =>
+    '<tr class="'+(i===lastRow?'last':'')+(p.sofort?' sof':'')+'"><td>'+(p.sofort ? '' : p.nr+'. ')+p.label+(i===lastRow && !p.sofort ? ' (Schluss)':'')+'</td><td>'+eur.format(p.pay/100)+'</td><td>'+eur.format(p.rest/100)+'</td></tr>'
+  ).join('');
+  $('result').classList.remove('hide');
+}
+
+function save(data, filename){
+  const msg = $('msg'); msg.textContent = '';
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(data);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (e) {
+    msg.textContent = 'Die Datei konnte nicht gespeichert werden.';
+  }
+}
+
+// ---- PDF-Erzeugung (ohne Bibliotheken, rein lokal) ----
+const HW = {
+  r: [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584],
+  b: [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611, 975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556, 333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584]
+};
+const PT = 2.83465;
+const WIN = {'€':0x80,'–':0x96,'„':0x84,'“':0x93,'”':0x94,'’':0x92,'‘':0x91,'•':0x95};
+
+function strW(s, bold, size){
+  const t = bold ? HW.b : HW.r;
+  let w = 0;
+  for (const ch of s) {
+    const c = ch.charCodeAt(0);
+    if (c >= 32 && c <= 126) { w += t[c - 32]; continue; }
+    const bc = ch.normalize('NFD').charCodeAt(0);
+    w += (bc >= 32 && bc <= 126) ? t[bc - 32] : 556;
+  }
+  return w * size / 1000;
+}
+function encPdf(s){
+  let out = '';
+  for (const ch of s) {
+    const c = ch.charCodeAt(0);
+    const b = WIN[ch] !== undefined ? WIN[ch] : (c < 256 ? c : 63);
+    const ch2 = String.fromCharCode(b);
+    out += (ch2 === '\\' || ch2 === '(' || ch2 === ')') ? '\\' + ch2 : ch2;
+  }
+  return out;
+}
+function pdfText(page, s, x, y, o){
+  o = o || {};
+  const size = o.size || 10;
+  let X = x * PT;
+  const w = strW(s, o.bold, size);
+  if (o.align === 'right') X -= w; else if (o.align === 'center') X -= w / 2;
+  const gray = o.gray ? '0.45 g' : '0 g';
+  page.push(gray + ' BT /' + (o.bold ? 'F2' : 'F1') + ' ' + size + ' Tf ' + X.toFixed(2) + ' ' + ((297 - y) * PT).toFixed(2) + ' Td (' + encPdf(s) + ') Tj ET');
+}
+function pdfRect(page, x, y, w, h, rgb){
+  page.push(rgb[0] + ' ' + rgb[1] + ' ' + rgb[2] + ' rg ' + (x * PT).toFixed(2) + ' ' + ((297 - y - h) * PT).toFixed(2) + ' ' + (w * PT).toFixed(2) + ' ' + (h * PT).toFixed(2) + ' re f');
+}
+function pdfLine(page, x1, x2, y){
+  const Y = ((297 - y) * PT).toFixed(2);
+  page.push('0.63 G 0.5 w ' + (x1 * PT).toFixed(2) + ' ' + Y + ' m ' + (x2 * PT).toFixed(2) + ' ' + Y + ' l S');
+}
+function buildPdf(pages){
+  const objs = [];
+  objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2] = '<< /Type /Pages /Kids [' + pages.map((_, i) => (5 + 2 * i) + ' 0 R').join(' ') + '] /Count ' + pages.length + ' >>';
+  objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  pages.forEach((c, i) => {
+    objs[5 + 2 * i] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ' + (6 + 2 * i) + ' 0 R >>';
+    objs[6 + 2 * i] = '<< /Length ' + c.length + ' >>\nstream\n' + c + '\nendstream';
+  });
+  let out = '%PDF-1.4\n';
+  const offs = [];
+  for (let i = 1; i < objs.length; i++) { offs[i] = out.length; out += i + ' 0 obj\n' + objs[i] + '\nendobj\n'; }
+  const xref = out.length;
+  out += 'xref\n0 ' + objs.length + '\n0000000000 65535 f \n';
+  for (let i = 1; i < objs.length; i++) out += String(offs[i]).padStart(10, '0') + ' 00000 n \n';
+  out += 'trailer\n<< /Size ' + objs.length + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+  const bytes = new Uint8Array(out.length);
+  for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 255;
+  return new Blob([bytes], {type: 'application/pdf'});
+}
+// ---- Ende PDF-Erzeugung ----
+
+function eurP(c){ return (c/100).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+
+function pdf(){
+  if (!plan.length) return;
+  const L = 20, R = 190, cRate = 135;
+  const name = $('name').value.trim(), street = $('street').value.trim(), city = $('city').value.trim();
+  const sof = plan.find(p => p.sofort), raten = plan.filter(p => !p.sofort);
+  const total = plan.reduce((s,p) => s + p.pay, 0), rate = raten.length ? raten[0].pay : 0, last = raten[raten.length-1];
+  const pages = [];
+  let pg = []; pages.push(pg);
+  const txt = (s, x, y, o) => pdfText(pg, s, x, y, o);
+  let y = 22;
+  txt('Ratenzahlungsplan', L, y, {bold:true, size:18});
+  txt('Erstellt am ' + new Date().toLocaleDateString('de-DE'), R, y, {align:'right', gray:true});
+  y += 11;
+  const addr = [name, street, city].filter(Boolean);
+  if (addr.length) {
+    txt('Schuldner', L, y, {bold:true}); y += 5;
+    addr.forEach(t => { txt(t, L, y); y += 5; });
+    y += 4;
+  }
+  const sum = [
+    ['Gesamtschuld', eurP(total)],
+    ...(schuldZeitraum() ? [['Schuldzeitraum', schuldZeitraum()]] : []),
+    ...(sof ? [['Einmalzahlung', eurP(sof.pay) + ' am ' + sof.label.replace('Einmalzahlung am ','')]] : []),
+    ['Monatliche Rate', raten.length ? eurP(rate) : '-'],
+    ['Anzahl der Raten', String(raten.length)],
+    ['Ratenzeitraum', raten.length ? raten[0].label + ' bis ' + last.label : '-'],
+    ['Schlussrate', raten.length ? eurP(last.pay) : '-']
+  ];
+  sum.forEach(r => {
+    txt(r[0], L, y, {bold:true});
+    txt(r[1], L + 45, y);
+    y += 6;
+  });
+  y += 6;
+  const head = () => {
+    txt('Nr.', L, y, {bold:true}); txt('Zahlung', L + 14, y, {bold:true});
+    txt('Rate', cRate, y, {bold:true, align:'right'}); txt('Restschuld', R, y, {bold:true, align:'right'});
+    y += 2; pdfLine(pg, L, R, y); y += 5.5;
+  };
+  head();
+  plan.forEach((p, i) => {
+    if (y > 278) { pg = []; pages.push(pg); y = 22; head(); }
+    const isLast = i === plan.length - 1;
+    const bold = isLast || !!p.sofort;
+    if (bold) pdfRect(pg, L - 1, y - 4.8, R - L + 2, 6.8, isLast ? [0.91, 0.945, 1] : [0.95, 0.95, 0.95]);
+    txt(p.sofort ? 'S' : String(p.nr), L, y, {bold});
+    txt(p.label + (isLast && !p.sofort ? ' (Schlussrate)' : ''), L + 14, y, {bold});
+    txt(eurP(p.pay), cRate, y, {bold, align:'right'});
+    txt(eurP(p.rest), R, y, {bold, align:'right'});
+    y += 7;
+  });
+  pages.forEach((p, i) => pdfText(p, 'Seite ' + (i + 1) + ' von ' + pages.length, 105, 290, {align:'center', gray:true, size:9}));
+  const fn = 'Ratenplan' + (name ? '_' + name.replace(/[^A-Za-z0-9äöüÄÖÜß-]+/g, '_') : '') + '.pdf';
+  save(buildPdf(pages.map(p => p.join('\n'))), fn);
+}
+
+function csv(){
+  const f = c => (c/100).toFixed(2).replace('.',',');
+  const lines = ['Nr;Monat;Rate;Restschuld'].concat(plan.map(p => [p.sofort ? 'S' : p.nr,p.label,f(p.pay),f(p.rest)].join(';')));
+  const blob = new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv'});
+  save(blob, 'ratenplan.csv');
+}
+
+function resetAll(){
+  ['name','street','city','amount','rate','dfrom','dto','sofort'].forEach(id => { $(id).value = ''; });
+  const d = new Date();
+  $('start').value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  $('sdate').value = todayISO();
+  plan = [];
+  $('err').textContent = '';
+  $('msg').textContent = '';
+  $('rows').innerHTML = '';
+  $('result').classList.add('hide');
+  $('name').focus();
+}
+
+$('go').addEventListener('click', calc);
+$('reset').addEventListener('click', resetAll);
+$('csv').addEventListener('click', csv);
+$('pdf').addEventListener('click', pdf);
+document.querySelectorAll('input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') calc(); }));
+calc();
+</script>
+</body>
+</html>
